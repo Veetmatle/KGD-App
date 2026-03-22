@@ -87,14 +87,14 @@ export function useLottery(participants: Participant[]) {
     setWinnerIdx(idx);
 
     // target: winner card wyśrodkowany w stripie
+    curOffset.current = 0;
+    vel.current       = SPIN_SPEED / 60;
+
     const stripCenter = Math.floor(N_VIS / 2) * SLOT;
     let raw = idx * SLOT - stripCenter;
     const loops = loopLen();
-    while (raw <= curOffset.current + loops * 2.5) raw += loops;
+    while (raw <= loops * 2.5) raw += loops;
     targetOff.current = raw;
-
-    curOffset.current = 0;
-    vel.current       = SPIN_SPEED / 60;
     setOffset(0);
     setGlowT(0);
     setRevealT(0);
