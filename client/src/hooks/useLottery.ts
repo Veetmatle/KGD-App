@@ -9,7 +9,7 @@ const STRIP_W   = N_VIS * SLOT - (SLOT - CARD_W);
 const SPIN_SPEED    = 5000;   // px/s initial
 const DECEL_SLOW    = 0.9808; // per-frame multiplier during slow phase
 const MIN_SPEED     = 4;      // snap threshold px/s
-const PAUSE_MS      = 150;   // pause on winner card before panel
+const PAUSE_MS      = 150;    // pause on winner card before panel
 const REVEAL_SPEED  = 0.03;   // per frame 0→1
 
 function shuffle<T>(arr: T[]): T[] {
@@ -33,7 +33,7 @@ export function useLottery(participants: Participant[]) {
 
   // physics refs (mutable, no re-render)
   const vel        = useRef(0);
-  const curOffset  = useRef(0);
+  const curOffset  = useRef(0);   // absolute, ever-increasing — never reset to 0 mid-session
   const targetOff  = useRef(0);
   const stateRef   = useRef<LotteryState>("idle");
   const pauseStart = useRef(0);
@@ -41,30 +41,36 @@ export function useLottery(participants: Participant[]) {
   const lastTime   = useRef(0);
   const tapeRef    = useRef<Participant[]>([]);
   const winIdxRef  = useRef(0);
-
-  // idle animation
-  const idleOffset = useRef(0);
   const idleRaf    = useRef(0);
 
   const loopLen = () => tapeRef.current.length * SLOT;
 
+  // Idle animation: uses curOffset directly (no separate ref, no modulo)
   const startIdleAnim = useCallback(() => {
     const tick = () => {
       if (stateRef.current !== "idle") return;
-      idleOffset.current = (idleOffset.current + 0.4) % loopLen();
-      setOffset(idleOffset.current);
+      curOffset.current += 0.4;
+      setOffset(curOffset.current);
       idleRaf.current = requestAnimationFrame(tick);
     };
     idleRaf.current = requestAnimationFrame(tick);
   }, []);
 
+  // When participants change (new file loaded) — shuffle once, reset offset
   useEffect(() => {
+    cancelAnimationFrame(idleRaf.current);
+    cancelAnimationFrame(rafId.current);
     if (participants.length === 0) return;
     const t = shuffle(participants);
     tapeRef.current = t;
     setTape(t);
+    curOffset.current = 0;
     stateRef.current = "idle";
     setState("idle");
+    setWinner(null);
+    setGlowT(0);
+    setRevealT(0);
+    setShowConfetti(false);
     startIdleAnim();
     return () => cancelAnimationFrame(idleRaf.current);
   }, [participants, startIdleAnim]);
@@ -76,24 +82,22 @@ export function useLottery(participants: Participant[]) {
 
     setWinner(w);
 
-    const newTape = shuffle(participants);
-    tapeRef.current = newTape;
-    setTape(newTape);
-
-    const idx = newTape.findIndex((p) => p.id === w.id);
+    // Find winner in the EXISTING tape — no reshuffle, no visual change
+    const idx = tapeRef.current.findIndex((p) => p.id === w.id);
+    if (idx === -1) return;
     winIdxRef.current = idx;
     setWinnerIdx(idx);
 
-    // target: winner card wyśrodkowany w stripie
-    curOffset.current = 0;
-    vel.current       = SPIN_SPEED / 60;
+    // Continue from current visual position — no backward jump
+    vel.current = SPIN_SPEED / 60;
 
     const stripCenter = Math.floor(N_VIS / 2) * SLOT;
     let raw = idx * SLOT - stripCenter;
     const loops = loopLen();
-    while (raw <= loops * 4) raw += loops;
+    // Spin at least 4 full loops beyond current offset before stopping at winner
+    while (raw <= curOffset.current + loops * 4) raw += loops;
     targetOff.current = raw;
-    setOffset(0);
+
     setGlowT(0);
     setRevealT(0);
     setShowConfetti(false);
@@ -157,13 +161,8 @@ export function useLottery(participants: Participant[]) {
   const reset = useCallback(() => {
     cancelAnimationFrame(rafId.current);
     cancelAnimationFrame(idleRaf.current);
-    // reshuffle tape so next idle/spin starts fresh
-    const reshuffled = shuffle(tapeRef.current);
-    tapeRef.current = reshuffled;
-    setTape(reshuffled);
-    stateRef.current  = "idle";
-    curOffset.current = 0;
-    idleOffset.current = 0;
+    // Keep tape and current offset — just restart idle from where we are
+    stateRef.current = "idle";
     setState("idle");
     setWinner(null);
     setGlowT(0);
@@ -178,7 +177,6 @@ export function useLottery(participants: Participant[]) {
     tapeRef.current   = [];
     stateRef.current  = "idle";
     curOffset.current = 0;
-    idleOffset.current = 0;
     setState("idle");
     setTape([]);
     setWinner(null);
