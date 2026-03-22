@@ -1,0 +1,41 @@
+# ===========================
+# .NET / ASP.NET Core (server)
+# ===========================
+server/bin/
+server/obj/
+server/wwwroot/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.vs/
+.vs/
+
+# ===========================
+# Node.js / Vite (client)
+# ===========================
+client/node_modules/
+client/dist/
+client/.vite/
+
+# ===========================
+# JetBrains Rider / IDEs
+# ===========================
+.idea/
+server/.idea/
+*.iml
+
+# ===========================
+# OS / system
+# ===========================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===========================
+# Env / secrets
+# ===========================
+.env
+.env.local
+.env.*.local
+appsettings.Development.json
