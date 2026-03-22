@@ -69,13 +69,11 @@ export function useLottery(participants: Participant[]) {
     return () => cancelAnimationFrame(idleRaf.current);
   }, [participants, startIdleAnim]);
 
-  const spin = useCallback(() => {
+  const spin = useCallback((w: Participant) => {
     if (participants.length === 0) return;
     cancelAnimationFrame(idleRaf.current);
     cancelAnimationFrame(rafId.current);
 
-    // PRAWDZIWE losowanie
-    const w = participants[Math.floor(Math.random() * participants.length)];
     setWinner(w);
 
     const newTape = shuffle(participants);

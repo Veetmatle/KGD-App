@@ -24,6 +24,29 @@ export default function App() {
     SLOT, CARD_W, N_VIS, STRIP_W,
   } = useLottery(participants);
 
+  const [drawing, setDrawing] = useState(false);
+
+  const handleSpin = useCallback(async () => {
+    if (participants.length === 0 || drawing) return;
+    setDrawing(true);
+    try {
+      const res = await fetch("/api/draw", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ participantIds: participants.map((p) => p.id) }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const { winnerId } = await res.json();
+      const winner = participants.find((p) => p.id === winnerId);
+      if (!winner) throw new Error("Nieznany zwycięzca");
+      spin(winner);
+    } catch (e: any) {
+      setError(`Błąd losowania: ${e.message}`);
+    } finally {
+      setDrawing(false);
+    }
+  }, [participants, drawing, spin]);
+
   // ── file upload ─────────────────────────────────────────────────────────────
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -58,11 +81,11 @@ export default function App() {
       if ((e.target as HTMLElement).tagName === "INPUT") return;
 
       if (e.key === " " || e.key === "Enter") {
-        if (state === "idle" && participants.length > 0) spin();
+        if (state === "idle" && participants.length > 0) handleSpin();
       }
       if (e.key === "r" || e.key === "R") {
-        if (state === "done" && participants.length > 0) spin();
-        else if (state === "idle" && participants.length > 0) spin();
+        if (state === "done" && participants.length > 0) handleSpin();
+        else if (state === "idle" && participants.length > 0) handleSpin();
       }
       if (e.key === "Escape") {
         if (state === "done") reset();
@@ -71,7 +94,7 @@ export default function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [state, participants, spin, reset, sidebarOpen]);
+  }, [state, participants, handleSpin, reset, sidebarOpen]);
 
   // ── visible cards ────────────────────────────────────────────────────────────
   const n = tape.length;
@@ -304,10 +327,10 @@ export default function App() {
         </button>
 
         <button
-          onClick={spin}
-          disabled={participants.length === 0 || !["idle","done"].includes(state)}
+          onClick={handleSpin}
+          disabled={participants.length === 0 || !["idle","done"].includes(state) || drawing}
           style={{
-            background: participants.length > 0 && ["idle","done"].includes(state)
+            background: participants.length > 0 && ["idle","done"].includes(state) && !drawing
               ? "#FFC828" : "#3a3a1a",
             color: "#080B14",
             border: "none",
@@ -317,14 +340,14 @@ export default function App() {
             transition: "all 0.2s",
           }}
         >
-          🎲  LOSUJ
+          {drawing ? "Losowanie…" : "🎲  LOSUJ"}
         </button>
       </div>
 
       {/* overlays */}
       <Confetti active={showConfetti} />
       {(state === "revealing" || state === "done") && winner && (
-        <WinnerPanel winner={winner} revealT={revealT} onReset={reset} onSpin={spin} />
+        <WinnerPanel winner={winner} revealT={revealT} onReset={reset} onSpin={handleSpin} />
       )}
 
       {sidebarOpen && (
