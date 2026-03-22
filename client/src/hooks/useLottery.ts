@@ -158,6 +158,11 @@ export function useLottery(participants: Participant[]) {
 
   const reset = useCallback(() => {
     cancelAnimationFrame(rafId.current);
+    cancelAnimationFrame(idleRaf.current);
+    // reshuffle tape so next idle/spin starts fresh
+    const reshuffled = shuffle(tapeRef.current);
+    tapeRef.current = reshuffled;
+    setTape(reshuffled);
     stateRef.current  = "idle";
     curOffset.current = 0;
     idleOffset.current = 0;
@@ -169,10 +174,26 @@ export function useLottery(participants: Participant[]) {
     startIdleAnim();
   }, [startIdleAnim]);
 
+  const clearAll = useCallback(() => {
+    cancelAnimationFrame(rafId.current);
+    cancelAnimationFrame(idleRaf.current);
+    tapeRef.current   = [];
+    stateRef.current  = "idle";
+    curOffset.current = 0;
+    idleOffset.current = 0;
+    setState("idle");
+    setTape([]);
+    setWinner(null);
+    setWinnerIdx(0);
+    setGlowT(0);
+    setRevealT(0);
+    setShowConfetti(false);
+  }, []);
+
   return {
     state, offset, tape, winner, winnerIdx,
     glowT, revealT, showConfetti,
-    spin, reset,
+    spin, reset, clearAll,
     SLOT, CARD_W, N_VIS, STRIP_W,
   };
 }

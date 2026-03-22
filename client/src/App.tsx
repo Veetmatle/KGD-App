@@ -4,18 +4,24 @@ import { useLottery } from "./hooks/useLottery";
 import ParticipantCard from "./components/ParticipantCard";
 import WinnerPanel from "./components/WinnerPanel";
 import Confetti from "./components/Confetti";
+import LoginScreen from "./components/LoginScreen";
+import ParticipantsSidebar from "./components/ParticipantsSidebar";
 
 const CARD_H = 260;
 
 export default function App() {
+  const [authed, setAuthed] = useState(() => sessionStorage.getItem("auth") === "1");
+
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [loading, setLoading]           = useState(false);
   const [error, setError]               = useState("");
+  const [sidebarOpen, setSidebarOpen]   = useState(false);
 
   const {
     state, offset, tape, winner, winnerIdx,
     glowT, revealT, showConfetti,
-    spin, reset, SLOT, CARD_W, N_VIS, STRIP_W,
+    spin, reset, clearAll,
+    SLOT, CARD_W, N_VIS, STRIP_W,
   } = useLottery(participants);
 
   // ── file upload ─────────────────────────────────────────────────────────────
@@ -34,12 +40,23 @@ export default function App() {
       setError(`Błąd: ${e.message}`);
     } finally {
       setLoading(false);
+      // reset input so the same file can be re-selected
+      if (fileRef.current) fileRef.current.value = "";
     }
   };
+
+  const handleResetExcel = useCallback(() => {
+    clearAll();
+    setParticipants([]);
+    setError("");
+  }, [clearAll]);
 
   // ── keyboard ────────────────────────────────────────────────────────────────
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // don't fire shortcuts when user is typing in an input
+      if ((e.target as HTMLElement).tagName === "INPUT") return;
+
       if (e.key === " " || e.key === "Enter") {
         if (state === "idle" && participants.length > 0) spin();
       }
@@ -47,11 +64,14 @@ export default function App() {
         if (state === "done") reset();
         else if (state === "idle" && participants.length > 0) spin();
       }
-      if (e.key === "Escape" && state === "done") reset();
+      if (e.key === "Escape") {
+        if (state === "done") reset();
+        else if (sidebarOpen) setSidebarOpen(false);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [state, participants, spin, reset]);
+  }, [state, participants, spin, reset, sidebarOpen]);
 
   // ── visible cards ────────────────────────────────────────────────────────────
   const n = tape.length;
@@ -74,6 +94,8 @@ export default function App() {
     state === "spinning" || state === "slowing" ? "Losowanie w toku…" :
     state === "paused"   ? "Sprawdzamy wynik…" : "";
 
+  if (!authed) return <LoginScreen onLogin={() => setAuthed(true)} />;
+
   return (
     <div style={{
       minHeight: "100vh", background: "#080B14",
@@ -82,8 +104,8 @@ export default function App() {
       color: "#fff", userSelect: "none",
     }}>
 
-      {/* ── logo ── */}
-      <div style={{ textAlign: "center", paddingTop: 28, paddingBottom: 4 }}>
+      {/* ── logo + sidebar toggle ── */}
+      <div style={{ position: "relative", textAlign: "center", paddingTop: 28, paddingBottom: 4 }}>
         <div style={{ fontSize: 56, fontWeight: 900, lineHeight: 1, letterSpacing: -1 }}>
           <span style={{ color: "#F0F5FF" }}>KGD</span>
           <span style={{ color: "#FFC828" }}>.</span>
@@ -99,6 +121,29 @@ export default function App() {
         <div style={{ color: "#5F6E87", fontSize: 17, marginTop: 8 }}>
           Losowanie nagrody spotkania
         </div>
+
+        {/* sidebar toggle button */}
+        {participants.length > 0 && (
+          <button
+            onClick={() => setSidebarOpen((o) => !o)}
+            style={{
+              position: "absolute",
+              right: 24,
+              top: "50%",
+              transform: "translateY(-50%)",
+              background: sidebarOpen ? "#23C3AA22" : "#1a2035",
+              color: "#23C3AA",
+              border: "1.5px solid #23C3AA",
+              borderRadius: 10,
+              padding: "8px 16px",
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            👥 Uczestnicy ({participants.length})
+          </button>
+        )}
       </div>
 
       {/* ── tape area ── */}
@@ -230,6 +275,21 @@ export default function App() {
           onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
         />
 
+        {participants.length > 0 && (
+          <button
+            onClick={handleResetExcel}
+            disabled={loading || !["idle", "done"].includes(state)}
+            style={{
+              background: "#1a2035", color: "#ff5050",
+              border: "1.5px solid #ff5050",
+              borderRadius: 10, padding: "10px 18px",
+              fontSize: 14, fontWeight: 700, cursor: "pointer",
+            }}
+          >
+            🗑  WYCZYŚĆ
+          </button>
+        )}
+
         <button
           onClick={() => fileRef.current?.click()}
           disabled={loading}
@@ -265,6 +325,14 @@ export default function App() {
       <Confetti active={showConfetti} />
       {(state === "revealing" || state === "done") && winner && (
         <WinnerPanel winner={winner} revealT={revealT} onReset={reset} />
+      )}
+
+      {sidebarOpen && (
+        <ParticipantsSidebar
+          participants={participants}
+          onAdd={(p) => setParticipants((prev) => [...prev, p])}
+          onClose={() => setSidebarOpen(false)}
+        />
       )}
 
       <style>{`
