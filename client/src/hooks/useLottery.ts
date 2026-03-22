@@ -7,8 +7,8 @@ const N_VIS     = 5;
 const STRIP_W   = N_VIS * SLOT - (SLOT - CARD_W);
 
 const SPIN_SPEED    = 5000;   // px/s initial
-const DECEL_SLOW    = 0.978;  // per-frame multiplier during slow phase
-const MIN_SPEED     = 6;      // snap threshold px/s
+const DECEL_SLOW    = 0.984;  // per-frame multiplier during slow phase
+const MIN_SPEED     = 4;      // snap threshold px/s
 const PAUSE_MS      = 150;   // pause on winner card before panel
 const REVEAL_SPEED  = 0.03;   // per frame 0→1
 
@@ -93,7 +93,7 @@ export function useLottery(participants: Participant[]) {
     const stripCenter = Math.floor(N_VIS / 2) * SLOT;
     let raw = idx * SLOT - stripCenter;
     const loops = loopLen();
-    while (raw <= loops * 2.5) raw += loops;
+    while (raw <= loops * 4) raw += loops;
     targetOff.current = raw;
     setOffset(0);
     setGlowT(0);
@@ -111,7 +111,7 @@ export function useLottery(participants: Participant[]) {
       if (s === "spinning") {
         curOffset.current += vel.current * dt * 60;
         const dist = targetOff.current - curOffset.current;
-        if (dist < SLOT * 14) {
+        if (dist < SLOT * 20) {
           stateRef.current = "slowing";
           setState("slowing");
         }

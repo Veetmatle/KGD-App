@@ -77,7 +77,13 @@ export default function Confetti({ active }: { active: boolean }) {
   }, [active]);
 
   useEffect(() => {
-    if (!active) { spawned.current = false; particles.current = []; }
+    if (!active) {
+      cancelAnimationFrame(rafId.current);
+      spawned.current = false;
+      particles.current = [];
+      const canvas = canvasRef.current;
+      if (canvas) canvas.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
+    }
   }, [active]);
 
   return (

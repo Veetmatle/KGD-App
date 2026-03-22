@@ -35,9 +35,9 @@ app.MapPost("/api/upload", async (IFormFile file) =>
     for (int c = 1; c <= cols; c++)
 {
         var h = sheet.Cells[1, c].Text.Trim();
-        if (h == "ID") idCol = c;
-        else if (h.Contains("nick")) nickCol = c;
-        else if (h.Contains("Email") || h.Contains("mail")) mailCol = c;
+        if (h.Equals("ID", StringComparison.OrdinalIgnoreCase)) idCol = c;
+        else if (h.Contains("nick", StringComparison.OrdinalIgnoreCase)) nickCol = c;
+        else if (h.Contains("email", StringComparison.OrdinalIgnoreCase) || h.Contains("mail", StringComparison.OrdinalIgnoreCase)) mailCol = c;
     }
 
     if (idCol < 0) return Results.BadRequest("Nie znaleziono kolumny ID");
