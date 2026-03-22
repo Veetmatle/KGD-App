@@ -7,7 +7,7 @@ import Confetti from "./components/Confetti";
 import LoginScreen from "./components/LoginScreen";
 import ParticipantsSidebar from "./components/ParticipantsSidebar";
 
-const CARD_H = 260;
+const CARD_H = 312;
 
 export default function App() {
   const [authed, setAuthed] = useState(() => sessionStorage.getItem("auth") === "1");

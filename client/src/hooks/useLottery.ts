@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { LotteryState, Participant } from "../types";
 
-const SLOT      = 210;   // px per card slot
-const CARD_W    = 194;
+const SLOT      = 252;   // px per card slot
+const CARD_W    = 233;
 const N_VIS     = 5;
 const STRIP_W   = N_VIS * SLOT - (SLOT - CARD_W);
 
 const SPIN_SPEED    = 5000;   // px/s initial
-const DECEL_SLOW    = 0.984;  // per-frame multiplier during slow phase
+const DECEL_SLOW    = 0.9808; // per-frame multiplier during slow phase
 const MIN_SPEED     = 4;      // snap threshold px/s
 const PAUSE_MS      = 150;   // pause on winner card before panel
 const REVEAL_SPEED  = 0.03;   // per frame 0→1

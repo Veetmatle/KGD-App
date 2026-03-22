@@ -47,7 +47,7 @@ export default function ParticipantCard({ participant, glowT = 0, width, height 
     <div style={style}>
       {/* top accent bar */}
       <div style={{
-        height: 8, margin: "4px 4px 0",
+        height: 10, margin: "5px 5px 0",
         background: `linear-gradient(90deg, ${lighten(pal.accent, 40)}, ${pal.accent})`,
         borderRadius: 6,
       }} />
@@ -60,22 +60,22 @@ export default function ParticipantCard({ participant, glowT = 0, width, height 
       }} />
 
       {/* content */}
-      <div style={{ padding: "10px 14px", flex: 1, display: "flex", flexDirection: "column" }}>
+      <div style={{ padding: "12px 17px", flex: 1, display: "flex", flexDirection: "column" }}>
         {/* ID */}
         <div style={{
-          fontSize: 12, fontWeight: 700, letterSpacing: 1,
+          fontSize: 14, fontWeight: 700, letterSpacing: 1,
           color: hl ? pal.accent : `${pal.accent}99`,
-          marginBottom: 6,
+          marginBottom: 7,
         }}>
           #{String(participant.id).padStart(2, "0")}
         </div>
 
         {/* separator */}
-        <div style={{ height: 1, background: `${pal.accent}30`, marginBottom: 10 }} />
+        <div style={{ height: 1, background: `${pal.accent}30`, marginBottom: 12 }} />
 
         {/* nick */}
         <div style={{
-          fontSize: 17, fontWeight: 700,
+          fontSize: 20, fontWeight: 700,
           color: hl ? "#ffffff" : "#d0d8ee",
           lineHeight: 1.3,
           wordBreak: "break-word",
@@ -88,7 +88,7 @@ export default function ParticipantCard({ participant, glowT = 0, width, height 
 
         {/* email */}
         <div style={{
-          fontSize: 11, marginTop: 10,
+          fontSize: 13, marginTop: 12,
           color: participant.mail ? (hl ? pal.accent : `${pal.accent}aa`) : "#3a4560",
           textAlign: "center",
           wordBreak: "break-all",
