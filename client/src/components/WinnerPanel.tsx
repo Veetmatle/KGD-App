@@ -9,9 +9,10 @@ interface Props {
   winner: Participant;
   revealT: number;
   onReset: () => void;
+  onSpin: () => void;
 }
 
-export default function WinnerPanel({ winner, revealT, onReset }: Props) {
+export default function WinnerPanel({ winner, revealT, onReset, onSpin }: Props) {
   const ease   = 1 - Math.pow(1 - revealT, 3);
   const accent = PALETTES[winner.id % PALETTES.length];
   const translateY = `${(1 - ease) * 120}px`;
@@ -70,8 +71,16 @@ export default function WinnerPanel({ winner, revealT, onReset }: Props) {
 
           <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
             <button onClick={onReset} style={{
-              background: "#1a2035", color: "#23C3AA",
-              border: "1.5px solid #23C3AA",
+              background: "#1a2035", color: "#5F6E87",
+              border: "1.5px solid #2a3550",
+              borderRadius: 10, padding: "10px 22px",
+              fontSize: 14, fontWeight: 700, cursor: "pointer",
+            }}>
+              ✕ Zamknij
+            </button>
+            <button onClick={onSpin} style={{
+              background: "#23C3AA", color: "#080B14",
+              border: "none",
               borderRadius: 10, padding: "10px 28px",
               fontSize: 14, fontWeight: 700, cursor: "pointer",
             }}>

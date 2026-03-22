@@ -61,7 +61,7 @@ export default function App() {
         if (state === "idle" && participants.length > 0) spin();
       }
       if (e.key === "r" || e.key === "R") {
-        if (state === "done") reset();
+        if (state === "done" && participants.length > 0) spin();
         else if (state === "idle" && participants.length > 0) spin();
       }
       if (e.key === "Escape") {
@@ -324,13 +324,13 @@ export default function App() {
       {/* overlays */}
       <Confetti active={showConfetti} />
       {(state === "revealing" || state === "done") && winner && (
-        <WinnerPanel winner={winner} revealT={revealT} onReset={reset} />
+        <WinnerPanel winner={winner} revealT={revealT} onReset={reset} onSpin={spin} />
       )}
 
       {sidebarOpen && (
         <ParticipantsSidebar
           participants={participants}
-          onAdd={(p) => setParticipants((prev) => [...prev, p])}
+          onAdd={(p: Participant) => setParticipants((prev) => [...prev, p])}
           onClose={() => setSidebarOpen(false)}
         />
       )}

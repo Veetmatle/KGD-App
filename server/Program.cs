@@ -5,6 +5,9 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
     p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
 
+// Allow APP_PASSWORD env var to override appsettings.json
+builder.Configuration.AddEnvironmentVariables();
+
 ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
 
 var app = builder.Build();
@@ -13,6 +16,12 @@ app.UseDefaultFiles();
 app.UseStaticFiles();
 
 // ── API ──────────────────────────────────────────────────────────────────────
+
+app.MapPost("/api/auth", (AuthRequest req, IConfiguration config) =>
+{
+    var expected = config["APP_PASSWORD"] ?? "kgd2024";
+    return req.Password == expected ? Results.Ok() : Results.Unauthorized();
+});
 
 app.MapPost("/api/upload", async (IFormFile file) =>
 {
@@ -54,3 +63,5 @@ app.MapPost("/api/upload", async (IFormFile file) =>
 
 app.MapFallbackToFile("index.html");
 app.Run();
+
+record AuthRequest(string Password);

@@ -5,8 +5,6 @@
 Aplikacja webowa do losowania nagród na spotkaniach społeczności **KGD.NET**.
 Wizualnie nawiązuje do mechaniki otwierania skrzynek z CS:GO — poziomy pasek z kartami uczestników przesuwa się i zatrzymuje na wylosowanym zwycięzcy.
 
-Aplikacja jest **w trakcie budowy**.
-
 ---
 
 ## Architektura
@@ -14,10 +12,23 @@ Aplikacja jest **w trakcie budowy**.
 ```
 KgdLoteria/
 ├── client/         # Frontend — React 18 + TypeScript + Vite
-└── server/         # Backend  — ASP.NET Core (.NET 9), minimal API
+├── server/         # Backend  — ASP.NET Core (.NET 9), minimal API
+├── .env            # Zmienne środowiskowe (gitignored) — APP_PASSWORD
+├── .env.example    # Przykład pliku .env (tracked)
+└── Dockerfile      # Multi-stage build (frontend → backend → runtime)
 ```
 
 Backend serwuje frontend jako pliki statyczne (`wwwroot/`). W trybie dev frontend działa na porcie Vite, a backend na osobnym porcie z CORS AllowAny.
+
+---
+
+## Konfiguracja hasła
+
+Hasło dostępu pochodzi z `APP_PASSWORD`:
+1. zmienna środowiskowa (Docker, produkcja) — najwyższy priorytet
+2. `server/appsettings.json` — fallback dla dev (domyślnie `kgd2024`)
+
+Plik `.env` w katalogu głównym (gitignored) jest odczytywany przez Docker Compose. Lokalnie wystarczy ustawić `APP_PASSWORD` w env lub zostawić domyślną wartość z `appsettings.json`.
 
 ---
 
@@ -29,6 +40,7 @@ Backend serwuje frontend jako pliki statyczne (`wwwroot/`). W trybie dev fronten
 
 | Metoda | Ścieżka | Opis |
 |--------|---------|------|
+| `POST` | `/api/auth` | Przyjmuje `{ password }` w JSON, waliduje względem `APP_PASSWORD`, zwraca 200 lub 401 |
 | `POST` | `/api/upload` | Przyjmuje plik `.xlsx`/`.xls`, parsuje arkusz i zwraca JSON z listą uczestników |
 
 ### Parsowanie Excela (EPPlus)
@@ -55,7 +67,9 @@ src/
 ├── hooks/
 │   └── useLottery.ts          # Logika animacji / stany losowania
 ├── components/
+│   ├── LoginScreen.tsx        # Ekran logowania — POST /api/auth
 │   ├── ParticipantCard.tsx    # Karta uczestnika na taśmie
+│   ├── ParticipantsSidebar.tsx# Panel boczny z listą uczestników
 │   ├── WinnerPanel.tsx        # Modal ze zwycięzcą (animowany)
 │   └── Confetti.tsx           # Efekt konfetti po losowaniu
 └── types/
@@ -92,10 +106,23 @@ niebieski, fioletowy, turkusowy, różowy, zielony, złoty.
 
 ---
 
+## Docker
+
+Dockerfile w korzeniu repozytorium — multi-stage:
+1. **frontend** — `node:20-alpine`, `npm run build` → `/app/server/wwwroot`
+2. **backend** — `dotnet/sdk:9.0`, `dotnet publish` + kopiuje wwwroot
+3. **runtime** — `dotnet/aspnet:9.0`, port `8080`
+
+Zmienne środowiskowe kontenera:
+- `APP_PASSWORD` — hasło dostępu (obowiązkowe na produkcji)
+
+Przykład uruchomienia gotowego obrazu: `docker-compose.example.yml`.
+Nazwa obrazu: `kgdnet/loteria:latest`.
+
+---
+
 ## Co jest do zrobienia (TODO)
 
-- [ ] **Ekran hasła** — przed możliwością wgrania pliku użytkownik musi wpisać hasło
-- [ ] **Reset danych** — przycisk do usunięcia wczytanego Excela i powrotu do stanu pustego (możliwość wgrania nowego pliku od zera)
 - [ ] Aktualnie aplikacja nie usuwa wylosowanych uczestników z puli — każde losowanie jest niezależne (wszyscy mogą wygrać wielokrotnie)
 
 ---
@@ -103,7 +130,7 @@ niebieski, fioletowy, turkusowy, różowy, zielony, złoty.
 ## Uruchomienie
 
 ```bash
-# Backend
+# Backend (dev)
 cd server
 dotnet run
 
@@ -116,4 +143,8 @@ npm run dev
 cd client
 npm run build
 # artefakty trafiają do server/wwwroot/ (skonfigurowane w vite.config.ts)
+
+# Docker
+docker build -t kgdnet/loteria:latest .
+docker run -p 8080:8080 -e APP_PASSWORD=mojehaslo kgdnet/loteria:latest
 ```
