@@ -12,6 +12,11 @@ const DECEL_SLOW    = 0.9808; // per-frame multiplier during slow phase
 // Trigger slowing at SLOT*12 = 3024 px < 4256 px → strip always overshoots target slightly,
 // then we snap exactly (at most 1 frame of movement, imperceptible).
 const DECEL_DIST    = SLOT * 12; // px remaining when we start slowing
+// At CRAWL_DIST entry: vel ≈ SLOT*5 * (1-DECEL_SLOW) ≈ 24 px/frame
+// S_inf_crawl = 24 * DECEL_CRAWL / (1-DECEL_CRAWL) ≈ 2376 px > CRAWL_DIST=1260 px → always reaches target.
+// Last card (~252 px) takes ≈ 1.5 s — CS:GO-style suspense on the final 5 cards.
+const CRAWL_DIST    = SLOT * 5;  // px remaining when we switch to gentle crawl
+const DECEL_CRAWL   = 0.990;     // per-frame multiplier during crawl (last ~5 cards creep)
 const PAUSE_MS      = 150;    // pause on winner card before panel
 const REVEAL_SPEED  = 0.03;   // per frame 0→1
 
@@ -122,8 +127,9 @@ export function useLottery(participants: Participant[]) {
           setState("slowing");
         }
       } else if (s === "slowing") {
-        vel.current *= Math.pow(DECEL_SLOW, dt * 60);
         const dist = targetOff.current - curOffset.current;
+        const k = dist < CRAWL_DIST ? DECEL_CRAWL : DECEL_SLOW;
+        vel.current *= Math.pow(k, dt * 60);
         const step = vel.current * dt * 60;
         if (step >= dist || dist <= 1) {
           // Next step would overshoot or we're within 1 px — snap exactly to target.
