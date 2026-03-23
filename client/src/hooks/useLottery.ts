@@ -8,7 +8,10 @@ const STRIP_W   = N_VIS * SLOT - (SLOT - CARD_W);
 
 const SPIN_SPEED    = 5000;   // px/s initial
 const DECEL_SLOW    = 0.9808; // per-frame multiplier during slow phase
-const MIN_SPEED     = 4;      // snap threshold px/s
+// S_inf (total decel distance from SPIN_SPEED) = (SPIN_SPEED/60) * DECEL_SLOW / (1-DECEL_SLOW) ≈ 4256 px
+// Trigger slowing at SLOT*12 = 3024 px < 4256 px → strip always overshoots target slightly,
+// then we snap exactly (at most 1 frame of movement, imperceptible).
+const DECEL_DIST    = SLOT * 12; // px remaining when we start slowing
 const PAUSE_MS      = 150;    // pause on winner card before panel
 const REVEAL_SPEED  = 0.03;   // per frame 0→1
 
@@ -43,8 +46,6 @@ export function useLottery(participants: Participant[]) {
   const winIdxRef  = useRef(0);
   const idleRaf    = useRef(0);
 
-  const loopLen = () => tapeRef.current.length * SLOT;
-
   // Idle animation: uses curOffset directly (no separate ref, no modulo)
   const startIdleAnim = useCallback(() => {
     const tick = () => {
@@ -75,28 +76,31 @@ export function useLottery(participants: Participant[]) {
     return () => cancelAnimationFrame(idleRaf.current);
   }, [participants, startIdleAnim]);
 
-  const spin = useCallback((w: Participant) => {
-    if (participants.length === 0) return;
+  // spin — winner is drawn client-side via Math.random(), no server call needed.
+  const spin = useCallback(() => {
+    const n = tapeRef.current.length;
+    if (n === 0) return;
     cancelAnimationFrame(idleRaf.current);
     cancelAnimationFrame(rafId.current);
 
+    // 1. Draw winner at the very start of the spin
+    const idx = Math.floor(Math.random() * n);
+    const w   = tapeRef.current[idx];
     setWinner(w);
-
-    // Find winner in the EXISTING tape — no reshuffle, no visual change
-    const idx = tapeRef.current.findIndex((p) => p.id === w.id);
-    if (idx === -1) return;
     winIdxRef.current = idx;
     setWinnerIdx(idx);
 
-    // Continue from current visual position — no backward jump
+    // 2. Compute exact target offset so the tape stops precisely on the winner.
+    //    targetOff ≡ winnerBase (mod loopLen), and is at least 4 full loops ahead
+    //    of the current position, guaranteeing a visually satisfying spin duration.
     vel.current = SPIN_SPEED / 60;
-
+    const loopLen    = n * SLOT;
     const stripCenter = Math.floor(N_VIS / 2) * SLOT;
-    let raw = idx * SLOT - stripCenter;
-    const loops = loopLen();
-    // Spin at least 4 full loops beyond current offset before stopping at winner
-    while (raw <= curOffset.current + loops * 4) raw += loops;
-    targetOff.current = raw;
+    const winnerBase = idx * SLOT - stripCenter;
+    // ceil((curOffset - winnerBase) / loopLen) + 4 gives the number of full loop-lengths
+    // to add to winnerBase so that the result is > curOffset + 3*loopLen (at least 4 loops ahead)
+    const loopsNeeded = Math.ceil((curOffset.current - winnerBase) / loopLen) + 4;
+    targetOff.current = winnerBase + loopsNeeded * loopLen;
 
     setGlowT(0);
     setRevealT(0);
@@ -113,20 +117,25 @@ export function useLottery(participants: Participant[]) {
       if (s === "spinning") {
         curOffset.current += vel.current * dt * 60;
         const dist = targetOff.current - curOffset.current;
-        if (dist < SLOT * 20) {
+        if (dist < DECEL_DIST) {
           stateRef.current = "slowing";
           setState("slowing");
         }
       } else if (s === "slowing") {
-        vel.current      *= Math.pow(DECEL_SLOW, dt * 60);
-        curOffset.current += vel.current * dt * 60;
+        vel.current *= Math.pow(DECEL_SLOW, dt * 60);
         const dist = targetOff.current - curOffset.current;
-        if (vel.current < MIN_SPEED || dist < 1) {
+        const step = vel.current * dt * 60;
+        if (step >= dist || dist <= 1) {
+          // Next step would overshoot or we're within 1 px — snap exactly to target.
+          // Because DECEL_DIST < S_inf, the strip always reaches the target;
+          // the snap is at most ~1 frame of movement (imperceptible).
           curOffset.current = targetOff.current;
           vel.current       = 0;
           stateRef.current  = "paused";
           setState("paused");
           pauseStart.current = performance.now();
+        } else {
+          curOffset.current += step;
         }
       } else if (s === "paused") {
         const elapsed = performance.now() - pauseStart.current;

@@ -24,28 +24,10 @@ export default function App() {
     SLOT, CARD_W, N_VIS, STRIP_W,
   } = useLottery(participants);
 
-  const [drawing, setDrawing] = useState(false);
-
-  const handleSpin = useCallback(async () => {
-    if (participants.length === 0 || drawing) return;
-    setDrawing(true);
-    try {
-      const res = await fetch("/api/draw", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ participantIds: participants.map((p) => p.id) }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const { winnerId } = await res.json();
-      const winner = participants.find((p) => p.id === winnerId);
-      if (!winner) throw new Error("Nieznany zwycięzca");
-      spin(winner);
-    } catch (e: any) {
-      setError(`Błąd losowania: ${e.message}`);
-    } finally {
-      setDrawing(false);
-    }
-  }, [participants, drawing, spin]);
+  const handleSpin = useCallback(() => {
+    if (participants.length === 0) return;
+    spin();
+  }, [participants, spin]);
 
   // ── file upload ─────────────────────────────────────────────────────────────
   const fileRef = useRef<HTMLInputElement>(null);
@@ -328,9 +310,9 @@ export default function App() {
 
         <button
           onClick={handleSpin}
-          disabled={participants.length === 0 || !["idle","done"].includes(state) || drawing}
+          disabled={participants.length === 0 || !["idle","done"].includes(state)}
           style={{
-            background: participants.length > 0 && ["idle","done"].includes(state) && !drawing
+            background: participants.length > 0 && ["idle","done"].includes(state)
               ? "#FFC828" : "#3a3a1a",
             color: "#080B14",
             border: "none",
@@ -340,7 +322,7 @@ export default function App() {
             transition: "all 0.2s",
           }}
         >
-          {drawing ? "Losowanie…" : "🎲  LOSUJ"}
+          🎲  LOSUJ
         </button>
       </div>
 

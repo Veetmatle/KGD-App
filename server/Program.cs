@@ -61,16 +61,7 @@ app.MapPost("/api/upload", async (IFormFile file) =>
 })
 .DisableAntiforgery();
 
-app.MapPost("/api/draw", ([FromBody] DrawRequest req) =>
-{
-    if (req.ParticipantIds == null || req.ParticipantIds.Count == 0)
-        return Results.BadRequest("Brak uczestników");
-    var winnerId = req.ParticipantIds[Random.Shared.Next(req.ParticipantIds.Count)];
-    return Results.Ok(new { winnerId });
-});
-
 app.MapFallbackToFile("index.html");
 app.Run();
 
 record AuthRequest(string Password);
-record DrawRequest(List<int> ParticipantIds);

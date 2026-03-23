@@ -43,6 +43,8 @@ Plik `.env` w katalogu głównym (gitignored) jest odczytywany przez Docker Comp
 | `POST` | `/api/auth` | Przyjmuje `{ password }` w JSON, waliduje względem `APP_PASSWORD`, zwraca 200 lub 401 |
 | `POST` | `/api/upload` | Przyjmuje plik `.xlsx`/`.xls`, parsuje arkusz i zwraca JSON z listą uczestników |
 
+Losowanie odbywa się **wyłącznie po stronie frontendu** (`Math.random()`). Brak endpointu `/api/draw`.
+
 ### Parsowanie Excela (EPPlus)
 
 Parser szuka nagłówków w pierwszym wierszu:
@@ -86,7 +88,7 @@ idle → spinning → slowing → paused → revealing → done
 
 - **idle** — taśma przesuwa się wolno w pętli (animacja idle)
 - **spinning** — pełna prędkość (5000 px/s)
-- **slowing** — deceleracja (mnożnik 0.978/klatkę) gdy dystans < 14 slotów
+- **slowing** — deceleracja (mnożnik 0.9808/klatkę) gdy dystans < 12 slotów; zatrzymanie gdy krok >= pozostały dystans (brak overshootu)
 - **paused** — zatrzymanie na zwycięzcy, krótki glow (150 ms)
 - **revealing** — animowane wjazd panelu zwycięzcy + konfetti
 - **done** — panel widoczny, czeka na reset
@@ -121,9 +123,9 @@ Nazwa obrazu: `kgdnet/loteria:latest`.
 
 ---
 
-## Co jest do zrobienia (TODO)
+## Zachowanie losowania
 
-- [ ] Aktualnie aplikacja nie usuwa wylosowanych uczestników z puli — każde losowanie jest niezależne (wszyscy mogą wygrać wielokrotnie)
+Każde losowanie jest niezależne — wylosowany uczestnik pozostaje w puli i może wygrać ponownie. To celowe zachowanie.
 
 ---
 
