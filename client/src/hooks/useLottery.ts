@@ -12,11 +12,12 @@ const DECEL_SLOW    = 0.9808; // per-frame multiplier during slow phase
 // Trigger slowing at SLOT*12 = 3024 px < 4256 px → strip always overshoots target slightly,
 // then we snap exactly (at most 1 frame of movement, imperceptible).
 const DECEL_DIST    = SLOT * 12; // px remaining when we start slowing
-// At CRAWL_DIST entry: vel ≈ SLOT*5 * (1-DECEL_SLOW) ≈ 24 px/frame
-// S_inf_crawl = 24 * DECEL_CRAWL / (1-DECEL_CRAWL) ≈ 2376 px > CRAWL_DIST=1260 px → always reaches target.
-// Last card (~252 px) takes ≈ 1.5 s — CS:GO-style suspense on the final 5 cards.
-const CRAWL_DIST    = SLOT * 5;  // px remaining when we switch to gentle crawl
-const DECEL_CRAWL   = 0.990;     // per-frame multiplier during crawl (last ~5 cards creep)
+// Crawl zone: clamp velocity to CRAWL_VEL on entry (strip is still ~49 px/frame due to transient),
+// then apply gentle DECEL_CRAWL. S_inf_crawl = 10*0.993/0.007 ≈ 1418 px > CRAWL_DIST=1260 px ✓
+// Card timing: 5th≈0.5 s, 4th≈0.6 s, 3rd≈0.8 s, 2nd≈1.1 s, winner≈1.4 s — CS:GO suspense feel.
+const CRAWL_DIST    = SLOT * 5;  // px remaining when we switch to crawl
+const CRAWL_VEL     = 10;        // px/frame — velocity cap at crawl entry (~600 px/s)
+const DECEL_CRAWL   = 0.993;     // per-frame multiplier during crawl (last ~5 cards creep)
 const PAUSE_MS      = 150;    // pause on winner card before panel
 const REVEAL_SPEED  = 0.03;   // per frame 0→1
 
@@ -128,8 +129,12 @@ export function useLottery(participants: Participant[]) {
         }
       } else if (s === "slowing") {
         const dist = targetOff.current - curOffset.current;
-        const k = dist < CRAWL_DIST ? DECEL_CRAWL : DECEL_SLOW;
-        vel.current *= Math.pow(k, dt * 60);
+        if (dist < CRAWL_DIST) {
+          if (vel.current > CRAWL_VEL) vel.current = CRAWL_VEL; // gear-shift on crawl entry
+          vel.current *= Math.pow(DECEL_CRAWL, dt * 60);
+        } else {
+          vel.current *= Math.pow(DECEL_SLOW, dt * 60);
+        }
         const step = vel.current * dt * 60;
         if (step >= dist || dist <= 1) {
           // Next step would overshoot or we're within 1 px — snap exactly to target.
